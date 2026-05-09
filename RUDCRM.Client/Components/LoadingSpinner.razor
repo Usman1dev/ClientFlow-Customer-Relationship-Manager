@@ -1,0 +1,10 @@
+<div class="text-center p-4">
+    <div class="spinner-border text-primary" role="status" style="width:2.5rem;height:2.5rem;">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-2 text-muted">@Message</p>
+</div>
+
+@code {
+    [Parameter] public string Message { get; set; } = "Loading...";
+}

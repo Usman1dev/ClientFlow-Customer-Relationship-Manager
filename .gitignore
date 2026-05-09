@@ -1,0 +1,17 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.userprefs
+*.pidb
+*.booproj
+
+## Uploads directory (exclude actual files)
+RUDCRM.Server/Uploads/*
+!RUDCRM.Server/Uploads/.gitkeep
+
+## Published output
+publish/
+.publish/

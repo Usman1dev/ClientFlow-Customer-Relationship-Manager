@@ -1,0 +1,71 @@
+@page "/register"
+@layout RUDCRM.Client.Layout.MainLayout
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<div class="auth-container">
+    <div class="auth-card fade-in-up">
+        <div class="auth-logo">R</div>
+        <h2 class="auth-title">Create Account</h2>
+        <p class="auth-subtitle">Join RUD-CRM to manage your business</p>
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="alert alert-danger py-2 px-3" style="font-size:.85rem;border-radius:8px;">
+                <i class="bi bi-exclamation-circle me-1"></i> @_error
+            </div>
+        }
+
+        <EditForm Model="_model" OnValidSubmit="HandleRegister">
+            <DataAnnotationsValidator />
+            <div class="mb-3">
+                <label class="form-label">Full Name</label>
+                <InputText @bind-Value="_model.FullName" class="form-control" placeholder="John Doe" />
+                <ValidationMessage For="() => _model.FullName" class="text-danger small" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Email Address</label>
+                <InputText @bind-Value="_model.Email" class="form-control" placeholder="you@example.com" />
+                <ValidationMessage For="() => _model.Email" class="text-danger small" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Password</label>
+                <InputText @bind-Value="_model.Password" type="password" class="form-control" placeholder="••••••••" />
+                <ValidationMessage For="() => _model.Password" class="text-danger small" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Confirm Password</label>
+                <InputText @bind-Value="_model.ConfirmPassword" type="password" class="form-control" placeholder="••••••••" />
+                <ValidationMessage For="() => _model.ConfirmPassword" class="text-danger small" />
+            </div>
+            <button type="submit" class="btn btn-rud btn-rud-primary w-100 py-2" disabled="@_loading">
+                @if (_loading) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                Create Account
+            </button>
+        </EditForm>
+
+        <p class="text-center mt-3" style="font-size:.85rem;">
+            Already have an account? <a href="/login" style="font-weight:600;">Sign in</a>
+        </p>
+    </div>
+</div>
+
+@code {
+    private RegisterDto _model = new();
+    private string? _error;
+    private bool _loading;
+
+    private async Task HandleRegister()
+    {
+        _loading = true; _error = null;
+        var result = await AuthService.RegisterAsync(_model);
+        if (result.Success)
+        {
+            await JS.InvokeVoidAsync("rudInterop.showToast", "Account created successfully!", "success");
+            Navigation.NavigateTo("/dashboard", true);
+        }
+        else { _error = result.Message; }
+        _loading = false;
+    }
+}

@@ -1,0 +1,49 @@
+@page "/tasks"
+@attribute [Authorize]
+@inject TaskService TaskSvc
+@inject IJSRuntime JS
+
+<div class="page-header">
+    <h4 class="page-title"><i class="bi bi-check2-square me-2" style="color:var(--rud-warning);"></i>Tasks</h4>
+    <button class="btn btn-rud btn-rud-primary" @onclick="ShowAdd"><i class="bi bi-plus-lg me-1"></i>New Task</button>
+</div>
+@if(_loading){<LoadingSpinner/>}else{
+<div class="data-card"><div class="data-card-body" style="overflow-x:auto;">
+<table class="table-rud"><thead><tr><th>Task</th><th>Priority</th><th>Status</th><th>Due Date</th><th>Assigned To</th><th>Actions</th></tr></thead>
+<tbody>@foreach(var t in _items){
+<tr><td><div style="font-weight:600;">@t.Title</div>@if(!string.IsNullOrEmpty(t.Description)){<div style="font-size:.8rem;color:var(--rud-text-muted);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@t.Description</div>}</td>
+<td><span class="badge-status badge-@t.Priority.ToLower()">@t.Priority</span></td>
+<td><span class="badge-status badge-@t.Status.ToLower().Replace(" ","")">@t.Status</span></td>
+<td style="font-size:.85rem;">@(t.DueDate?.ToString("MMM dd, yyyy")??"—")</td>
+<td>@(t.AssignedToUserName??"Unassigned")</td>
+<td><button class="btn btn-rud btn-rud-outline btn-rud-sm me-1" @onclick="()=>ShowEdit(t)"><i class="bi bi-pencil"></i></button>
+<button class="btn btn-rud btn-rud-danger btn-rud-sm" @onclick="()=>{_del=t;_showDel=true;}"><i class="bi bi-trash"></i></button></td></tr>}
+@if(!_items.Any()){<tr><td colspan="6" class="empty-state"><i class="bi bi-check2-square"></i><p>No tasks</p></td></tr>}
+</tbody></table></div></div>}
+
+@if(_showModal){
+<div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.5);"><div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+<div class="modal-header"><h5 class="modal-title">@(_isEdit?"Edit":"New") Task</h5><button class="btn-close" @onclick="()=>_showModal=false"></button></div>
+<EditForm Model="_form" OnValidSubmit="Save"><DataAnnotationsValidator /><div class="modal-body"><div class="row g-3">
+<div class="col-12"><label class="form-label">Title *</label><InputText @bind-Value="_form.Title" class="form-control"/><ValidationMessage For="()=>_form.Title" class="text-danger small"/></div>
+<div class="col-md-4"><label class="form-label">Priority</label><InputSelect @bind-Value="_form.Priority" class="form-select">
+@foreach(var p in new[]{"Low","Medium","High","Urgent"}){<option value="@p">@p</option>}</InputSelect></div>
+<div class="col-md-4"><label class="form-label">Status</label><InputSelect @bind-Value="_form.Status" class="form-select">
+@foreach(var s in new[]{"Pending","InProgress","Completed","Cancelled"}){<option value="@s">@s</option>}</InputSelect></div>
+<div class="col-md-4"><label class="form-label">Due Date</label><InputDate @bind-Value="_form.DueDate" class="form-control"/></div>
+<div class="col-12"><label class="form-label">Description</label><InputTextArea @bind-Value="_form.Description" class="form-control" rows="3"/></div>
+</div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" @onclick="()=>_showModal=false">Cancel</button>
+<button type="submit" class="btn btn-rud btn-rud-primary">@(_isEdit?"Update":"Create")</button></div></EditForm></div></div></div>}
+<ConfirmDialog IsVisible="_showDel" Title="Delete Task" Message="@($"Delete {_del?.Title}?")" OnConfirm="Delete" OnCancel="()=>_showDel=false"/>
+
+@code{
+    List<TaskItemDto> _items=new();TaskItemDto _form=new();TaskItemDto? _del;
+    bool _loading=true,_showModal,_isEdit,_showDel;
+    protected override async Task OnInitializedAsync(){_items=await TaskSvc.GetAllAsync();_loading=false;}
+    void ShowAdd(){_form=new(){DueDate=DateTime.Now.AddDays(7)};_isEdit=false;_showModal=true;}
+    void ShowEdit(TaskItemDto t){_form=new(){Id=t.Id,Title=t.Title,Description=t.Description,DueDate=t.DueDate,Priority=t.Priority,Status=t.Status};_isEdit=true;_showModal=true;}
+    async Task Save(){bool ok=_isEdit?await TaskSvc.UpdateAsync(_form.Id,_form):await TaskSvc.CreateAsync(_form);
+        if(ok){await JS.InvokeVoidAsync("rudInterop.showToast",_isEdit?"Updated!":"Created!","success");_showModal=false;_items=await TaskSvc.GetAllAsync();}
+        else await JS.InvokeVoidAsync("rudInterop.showToast","Failed.","error");}
+    async Task Delete(){if(_del!=null){await TaskSvc.DeleteAsync(_del.Id);_showDel=false;_items=await TaskSvc.GetAllAsync();await JS.InvokeVoidAsync("rudInterop.showToast","Deleted.","success");}}
+}
