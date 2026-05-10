@@ -1,0 +1,182 @@
+@page "/dashboard"
+@attribute [Authorize]
+@inject DashboardService DashService
+@inject WeatherService WeatherSvc
+@inject IJSRuntime JS
+
+@if (_loading)
+{
+    <LoadingSpinner Message="Loading dashboard..." />
+}
+else if (_data != null)
+{
+    <!-- Stats Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3 fade-in-up">
+            <div class="stat-card">
+                <div class="stat-card-icon purple"><i class="bi bi-people-fill"></i></div>
+                <div class="stat-card-value">@_data.TotalCustomers</div>
+                <div class="stat-card-label">Total Customers</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3 fade-in-up delay-1">
+            <div class="stat-card">
+                <div class="stat-card-icon blue"><i class="bi bi-funnel-fill"></i></div>
+                <div class="stat-card-value">@_data.TotalLeads</div>
+                <div class="stat-card-label">Active Leads</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3 fade-in-up delay-2">
+            <div class="stat-card">
+                <div class="stat-card-icon green"><i class="bi bi-currency-dollar"></i></div>
+                <div class="stat-card-value">$@_data.TotalRevenue.ToString("N0")</div>
+                <div class="stat-card-label">Total Revenue</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3 fade-in-up delay-3">
+            <div class="stat-card">
+                <div class="stat-card-icon amber"><i class="bi bi-list-task"></i></div>
+                <div class="stat-card-value">@_data.PendingTasks</div>
+                <div class="stat-card-label">Pending Tasks</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-8 fade-in-up delay-1">
+            <div class="chart-container">
+                <h6 style="font-weight:700;margin-bottom:1rem;">Revenue Overview</h6>
+                <div style="height:280px;"><canvas id="revenueChart"></canvas></div>
+            </div>
+        </div>
+        <div class="col-lg-4 fade-in-up delay-2">
+            <div class="chart-container">
+                <h6 style="font-weight:700;margin-bottom:1rem;">Lead Pipeline</h6>
+                <div style="height:280px;"><canvas id="leadChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-lg-8 fade-in-up delay-2">
+            <div class="chart-container">
+                <h6 style="font-weight:700;margin-bottom:1rem;">Customer Growth</h6>
+                <div style="height:250px;"><canvas id="customerChart"></canvas></div>
+            </div>
+        </div>
+        <div class="col-lg-4 fade-in-up delay-3">
+            @if (_weather != null)
+            {
+                <div class="weather-widget">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="weather-city"><i class="bi bi-geo-alt me-1"></i>@_weather.City</div>
+                            <div class="weather-temp">@_weather.Temperature.ToString("F0")°C</div>
+                            <div class="weather-desc">@_weather.Description</div>
+                        </div>
+                        <img src="https://openweathermap.org/img/wn/@(_weather.Icon)@@2x.png" width="80" alt="weather" />
+                    </div>
+                    <div class="d-flex gap-3 mt-2" style="font-size:.85rem;opacity:.8;">
+                        <span><i class="bi bi-thermometer-half me-1"></i>Feels @_weather.FeelsLike.ToString("F0")°C</span>
+                        <span><i class="bi bi-droplet me-1"></i>@_weather.Humidity%</span>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="weather-widget" style="background:linear-gradient(135deg,#475569,#64748b);">
+                    <p class="mb-0"><i class="bi bi-cloud me-1"></i>Weather data unavailable</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="row g-3">
+        <div class="col-lg-6 fade-in-up delay-3">
+            <div class="data-card">
+                <div class="data-card-header">
+                    <span class="data-card-title">Recent Customers</span>
+                    <a href="/customers" class="btn btn-rud btn-rud-outline btn-rud-sm">View All</a>
+                </div>
+                <div class="data-card-body">
+                    <table class="table-rud">
+                        <thead><tr><th>Name</th><th>Company</th><th>Added</th></tr></thead>
+                        <tbody>
+                            @foreach (var c in _data.RecentCustomers)
+                            {
+                                <tr>
+                                    <td style="font-weight:600;">@c.FirstName @c.LastName</td>
+                                    <td>@(c.Company ?? "—")</td>
+                                    <td style="font-size:.8rem;color:var(--rud-text-muted);">@c.CreatedAt.ToString("MMM dd")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 fade-in-up delay-4">
+            <div class="data-card">
+                <div class="data-card-header">
+                    <span class="data-card-title">Upcoming Tasks</span>
+                    <a href="/tasks" class="btn btn-rud btn-rud-outline btn-rud-sm">View All</a>
+                </div>
+                <div class="data-card-body">
+                    <table class="table-rud">
+                        <thead><tr><th>Task</th><th>Priority</th><th>Due</th></tr></thead>
+                        <tbody>
+                            @foreach (var t in _data.UpcomingTasks)
+                            {
+                                <tr>
+                                    <td style="font-weight:600;">@t.Title</td>
+                                    <td><span class="badge-status badge-@t.Priority.ToLower()">@t.Priority</span></td>
+                                    <td style="font-size:.8rem;color:var(--rud-text-muted);">@(t.DueDate?.ToString("MMM dd") ?? "—")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private DashboardDto? _data;
+    private WeatherDto? _weather;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _data = await DashService.GetDashboardAsync();
+        _weather = await WeatherSvc.GetWeatherAsync("Islamabad");
+        _loading = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _data != null)
+        {
+            await Task.Delay(100);
+            // Revenue chart
+            var revLabels = _data.MonthlyRevenue.Select(r => r.Month).ToArray();
+            var revData = _data.MonthlyRevenue.Select(r => (double)r.Revenue).ToArray();
+            if (revLabels.Length == 0) { revLabels = new[] { "No Data" }; revData = new[] { 0.0 }; }
+            await JS.InvokeVoidAsync("rudCharts.createRevenueChart", "revenueChart", revLabels, revData);
+
+            // Lead chart
+            var leadLabels = _data.LeadsByStatus.Select(l => l.Status).ToArray();
+            var leadData = _data.LeadsByStatus.Select(l => (double)l.Count).ToArray();
+            if (leadLabels.Length == 0) { leadLabels = new[] { "No Leads" }; leadData = new[] { 0.0 }; }
+            await JS.InvokeVoidAsync("rudCharts.createLeadChart", "leadChart", leadLabels, leadData);
+
+            // Customer growth chart
+            var custLabels = _data.MonthlyCustomers.Select(c => c.Month).ToArray();
+            var custData = _data.MonthlyCustomers.Select(c => (double)c.Count).ToArray();
+            if (custLabels.Length == 0) { custLabels = new[] { "No Data" }; custData = new[] { 0.0 }; }
+            await JS.InvokeVoidAsync("rudCharts.createCustomerGrowthChart", "customerChart", custLabels, custData);
+        }
+    }
+}

@@ -5,9 +5,14 @@ using Microsoft.IdentityModel.Tokens;
 using RUDCRM.Server.Data;
 using RUDCRM.Server.Hubs;
 using RUDCRM.Server.Services;
+<<<<<<< HEAD
 using RUDCRM.Server.Models;
 using System.Text;
 using Blazored.LocalStorage;
+=======
+using RUDCRM.Shared.Models;
+using System.Text;
+>>>>>>> f1f16b05775f1962e046e7a92be03b9421eef765
 
 namespace RUDCRM.Server;
 
@@ -78,7 +83,11 @@ public class Program
             options.AddPolicy("EmployeeOrAdmin", policy => policy.RequireRole("Admin", "Employee"));
         });
 
+<<<<<<< HEAD
         // ── Services ───────────────────────────────────────────────────
+=======
+        // ── Application Services ───────────────────────────────────────
+>>>>>>> f1f16b05775f1962e046e7a92be03b9421eef765
         builder.Services.AddHttpClient<WeatherService>();
         builder.Services.AddScoped<WeatherService>();
 
@@ -88,6 +97,7 @@ public class Program
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
 
+<<<<<<< HEAD
         // ── Blazor Server Hosting ────────────────────────────────────────
         builder.Services.AddRazorPages();
         builder.Services.AddServerSideBlazor();
@@ -114,6 +124,16 @@ public class Program
         builder.Services.AddScoped<RUDCRM.Server.Services.AdminService>();
         builder.Services.AddScoped<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider, RUDCRM.Server.Auth.CustomAuthStateProvider>();
         builder.Services.AddBlazoredLocalStorage();
+=======
+        // ── CORS (for Blazor WASM dev server) ─────────────────────────
+        builder.Services.AddCors(options =>
+        {
+            options.AddDefaultPolicy(policy =>
+            {
+                policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+            });
+        });
+>>>>>>> f1f16b05775f1962e046e7a92be03b9421eef765
 
         var app = builder.Build();
 
@@ -124,7 +144,11 @@ public class Program
             try
             {
                 var context = services.GetRequiredService<ApplicationDbContext>();
+<<<<<<< HEAD
                 // await context.Database.MigrateAsync(); // Removed because tables are managed via db_setup.sql
+=======
+                await context.Database.MigrateAsync();
+>>>>>>> f1f16b05775f1962e046e7a92be03b9421eef765
                 await SeedData.InitializeAsync(services);
             }
             catch (Exception ex)
@@ -139,22 +163,49 @@ public class Program
         {
             app.UseSwagger();
             app.UseSwaggerUI();
+<<<<<<< HEAD
         }
         else
         {
             app.UseExceptionHandler("/Error");
+=======
+            app.UseWebAssemblyDebugging();
+        }
+        else
+        {
+>>>>>>> f1f16b05775f1962e046e7a92be03b9421eef765
             app.UseHsts();
         }
 
         app.UseHttpsRedirection();
+<<<<<<< HEAD
         app.UseStaticFiles();
 
         app.UseRouting();
+=======
+
+        // Serve Blazor WebAssembly static files
+        app.UseBlazorFrameworkFiles();
+        app.UseStaticFiles();
+
+        app.UseRouting();
+        app.UseCors();
+>>>>>>> f1f16b05775f1962e046e7a92be03b9421eef765
 
         app.UseAuthentication();
         app.UseAuthorization();
 
+<<<<<<< HEAD
         app.UseAntiforgery();
+=======
+        // Serve uploaded files statically
+        app.UseStaticFiles(new StaticFileOptions
+        {
+            FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+                Path.Combine(builder.Environment.ContentRootPath, "Uploads")),
+            RequestPath = "/uploads"
+        });
+>>>>>>> f1f16b05775f1962e046e7a92be03b9421eef765
 
         // Map API controllers
         app.MapControllers();
@@ -162,9 +213,14 @@ public class Program
         // Map SignalR hub
         app.MapHub<NotificationHub>("/hubs/notifications");
 
+<<<<<<< HEAD
         // Map Blazor Server
         app.MapBlazorHub();
         app.MapFallbackToPage("/_Host");
+=======
+        // Fallback to index.html for Blazor WASM client-side routing
+        app.MapFallbackToFile("index.html");
+>>>>>>> f1f16b05775f1962e046e7a92be03b9421eef765
 
         app.Run();
     }

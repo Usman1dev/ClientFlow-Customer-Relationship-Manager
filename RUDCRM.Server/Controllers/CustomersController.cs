@@ -2,8 +2,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RUDCRM.Server.Data;
+<<<<<<< HEAD
 using RUDCRM.Server.DTOs;
 using RUDCRM.Server.Models;
+=======
+using RUDCRM.Shared.DTOs;
+using RUDCRM.Shared.Models;
+>>>>>>> f1f16b05775f1962e046e7a92be03b9421eef765
 using System.Security.Claims;
 
 namespace RUDCRM.Server.Controllers;
@@ -113,6 +118,7 @@ public class CustomersController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
+<<<<<<< HEAD
         var customer = await _context.Customers
             .Include(c => c.Invoices)
             .Include(c => c.Appointments)
@@ -131,6 +137,11 @@ public class CustomersController : ControllerBase
         _context.Appointments.RemoveRange(customer.Appointments);
         _context.UploadedDocuments.RemoveRange(customer.Documents);
 
+=======
+        var customer = await _context.Customers.FindAsync(id);
+        if (customer == null) return NotFound();
+
+>>>>>>> f1f16b05775f1962e046e7a92be03b9421eef765
         _context.Customers.Remove(customer);
         await _context.SaveChangesAsync();
         return NoContent();

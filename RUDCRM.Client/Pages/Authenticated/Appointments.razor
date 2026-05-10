@@ -1,0 +1,50 @@
+@page "/appointments"
+@attribute [Authorize]
+@inject AppointmentService ApptSvc
+@inject CustomerService CustSvc
+@inject IJSRuntime JS
+
+<div class="page-header">
+    <h4 class="page-title"><i class="bi bi-calendar-event-fill me-2" style="color:var(--rud-accent);"></i>Appointments</h4>
+    <button class="btn btn-rud btn-rud-primary" @onclick="ShowAdd"><i class="bi bi-plus-lg me-1"></i>Add Appointment</button>
+</div>
+@if(_loading){<LoadingSpinner/>}else{
+<div class="data-card"><div class="data-card-body" style="overflow-x:auto;">
+<table class="table-rud"><thead><tr><th>Title</th><th>Customer</th><th>Start</th><th>End</th><th>Location</th><th>Actions</th></tr></thead>
+<tbody>@foreach(var a in _items){
+<tr><td style="font-weight:600;">@a.Title</td><td>@(a.CustomerName??"—")</td>
+<td style="font-size:.85rem;">@a.StartTime.ToString("MMM dd, hh:mm tt")</td>
+<td style="font-size:.85rem;">@a.EndTime.ToString("MMM dd, hh:mm tt")</td>
+<td>@(a.Location??"—")</td>
+<td><button class="btn btn-rud btn-rud-outline btn-rud-sm me-1" @onclick="()=>ShowEdit(a)"><i class="bi bi-pencil"></i></button>
+<button class="btn btn-rud btn-rud-danger btn-rud-sm" @onclick="()=>{_del=a;_showDel=true;}"><i class="bi bi-trash"></i></button></td></tr>}
+@if(!_items.Any()){<tr><td colspan="6" class="empty-state"><i class="bi bi-calendar"></i><p>No appointments</p></td></tr>}
+</tbody></table></div></div>}
+
+@if(_showModal){
+<div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.5);"><div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+<div class="modal-header"><h5 class="modal-title">@(_isEdit?"Edit":"Add") Appointment</h5><button class="btn-close" @onclick="()=>_showModal=false"></button></div>
+<EditForm Model="_form" OnValidSubmit="Save"><DataAnnotationsValidator /><div class="modal-body"><div class="row g-3">
+<div class="col-12"><label class="form-label">Title *</label><InputText @bind-Value="_form.Title" class="form-control"/><ValidationMessage For="()=>_form.Title" class="text-danger small"/></div>
+<div class="col-md-6"><label class="form-label">Start Time</label><InputDate @bind-Value="_form.StartTime" Type="InputDateType.DateTimeLocal" class="form-control"/></div>
+<div class="col-md-6"><label class="form-label">End Time</label><InputDate @bind-Value="_form.EndTime" Type="InputDateType.DateTimeLocal" class="form-control"/></div>
+<div class="col-md-6"><label class="form-label">Customer</label><InputSelect @bind-Value="_form.CustomerId" class="form-select"><option value="">— None —</option>
+@foreach(var c in _customers){<option value="@c.Id">@c.FirstName @c.LastName</option>}</InputSelect></div>
+<div class="col-md-6"><label class="form-label">Location</label><InputText @bind-Value="_form.Location" class="form-control"/></div>
+<div class="col-12"><label class="form-label">Description</label><InputTextArea @bind-Value="_form.Description" class="form-control" rows="2"/></div>
+</div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" @onclick="()=>_showModal=false">Cancel</button>
+<button type="submit" class="btn btn-rud btn-rud-primary">@(_isEdit?"Update":"Create")</button></div></EditForm></div></div></div>}
+
+<ConfirmDialog IsVisible="_showDel" Title="Delete Appointment" Message="@($"Delete {_del?.Title}?")" OnConfirm="Delete" OnCancel="()=>_showDel=false"/>
+
+@code{
+    List<AppointmentDto> _items=new();List<CustomerDto> _customers=new();AppointmentDto _form=new();AppointmentDto? _del;
+    bool _loading=true,_showModal,_isEdit,_showDel;
+    protected override async Task OnInitializedAsync(){_items=await ApptSvc.GetAllAsync();_customers=await CustSvc.GetAllAsync();_loading=false;}
+    void ShowAdd(){_form=new(){StartTime=DateTime.Now,EndTime=DateTime.Now.AddHours(1)};_isEdit=false;_showModal=true;}
+    void ShowEdit(AppointmentDto a){_form=new(){Id=a.Id,Title=a.Title,Description=a.Description,StartTime=a.StartTime,EndTime=a.EndTime,Location=a.Location,CustomerId=a.CustomerId};_isEdit=true;_showModal=true;}
+    async Task Save(){bool ok=_isEdit?await ApptSvc.UpdateAsync(_form.Id,_form):await ApptSvc.CreateAsync(_form);
+        if(ok){await JS.InvokeVoidAsync("rudInterop.showToast",_isEdit?"Updated!":"Created!","success");_showModal=false;_items=await ApptSvc.GetAllAsync();}
+        else await JS.InvokeVoidAsync("rudInterop.showToast","Failed.","error");}
+    async Task Delete(){if(_del!=null){await ApptSvc.DeleteAsync(_del.Id);_showDel=false;_items=await ApptSvc.GetAllAsync();await JS.InvokeVoidAsync("rudInterop.showToast","Deleted.","success");}}
+}

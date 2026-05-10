@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 using RUDCRM.Server.DTOs;
+=======
+using RUDCRM.Shared.DTOs;
+>>>>>>> f1f16b05775f1962e046e7a92be03b9421eef765
 using System.Text.Json;
 
 namespace RUDCRM.Server.Services;

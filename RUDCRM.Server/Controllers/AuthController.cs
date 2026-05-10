@@ -2,8 +2,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+<<<<<<< HEAD
 using RUDCRM.Server.DTOs;
 using RUDCRM.Server.Models;
+=======
+using RUDCRM.Shared.DTOs;
+using RUDCRM.Shared.Models;
+>>>>>>> f1f16b05775f1962e046e7a92be03b9421eef765
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;

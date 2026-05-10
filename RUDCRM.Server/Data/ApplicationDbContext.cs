@@ -1,6 +1,10 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+<<<<<<< HEAD
 using RUDCRM.Server.Models;
+=======
+using RUDCRM.Shared.Models;
+>>>>>>> f1f16b05775f1962e046e7a92be03b9421eef765
 
 namespace RUDCRM.Server.Data;
 
