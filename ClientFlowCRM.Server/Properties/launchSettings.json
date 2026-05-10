@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "ClientFlowCRM.Server": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:53298;http://localhost:53299"
+    }
+  }
+}
