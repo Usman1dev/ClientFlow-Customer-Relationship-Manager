@@ -1,0 +1,72 @@
+@page "/login"
+@layout RUDCRM.Server.Layout.MainLayout
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<div class="auth-container">
+    <div class="auth-card fade-in-up">
+        <div class="auth-logo">R</div>
+        <h2 class="auth-title">Welcome Back</h2>
+        <p class="auth-subtitle">Sign in to your RUD-CRM account</p>
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="alert alert-danger py-2 px-3" style="font-size:.85rem;border-radius:8px;">
+                <i class="bi bi-exclamation-circle me-1"></i> @_error
+            </div>
+        }
+
+        <EditForm Model="_model" OnValidSubmit="HandleLogin">
+            <DataAnnotationsValidator />
+            <div class="mb-3">
+                <label class="form-label">Email Address</label>
+                <InputText @bind-Value="_model.Email" class="form-control" placeholder="you@example.com" id="loginEmail" />
+                <ValidationMessage For="() => _model.Email" class="text-danger small" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Password</label>
+                <InputText @bind-Value="_model.Password" type="password" class="form-control" placeholder="••••••••" id="loginPassword" />
+                <ValidationMessage For="() => _model.Password" class="text-danger small" />
+            </div>
+            <div class="mb-3 form-check">
+                <InputCheckbox @bind-Value="_model.RememberMe" class="form-check-input" id="rememberMe" />
+                <label class="form-check-label" for="rememberMe" style="font-size:.85rem;">Remember me</label>
+            </div>
+            <button type="submit" class="btn btn-rud btn-rud-primary w-100 py-2" disabled="@_loading">
+                @if (_loading)
+                {
+                    <span class="spinner-border spinner-border-sm me-1"></span>
+                }
+                Sign In
+            </button>
+        </EditForm>
+
+        <p class="text-center mt-3" style="font-size:.85rem;">
+            Don't have an account? <a href="/register" style="font-weight:600;">Create one</a>
+        </p>
+    </div>
+</div>
+
+@code {
+    private LoginDto _model = new();
+    private string? _error;
+    private bool _loading;
+
+    private async Task HandleLogin()
+    {
+        _loading = true;
+        _error = null;
+        var result = await AuthService.LoginAsync(_model);
+        if (result.Success)
+        {
+            await JS.InvokeVoidAsync("rudInterop.showToast", "Login successful!", "success");
+            Navigation.NavigateTo("/dashboard", true);
+        }
+        else
+        {
+            _error = result.Message;
+        }
+        _loading = false;
+    }
+}

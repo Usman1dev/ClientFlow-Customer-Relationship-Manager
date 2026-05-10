@@ -1,0 +1,47 @@
+@page "/announcements"
+@attribute [Authorize(Roles = "Admin")]
+@inject AdminService AdminSvc
+@inject IJSRuntime JS
+
+<div class="page-header">
+    <h4 class="page-title"><i class="bi bi-megaphone-fill me-2" style="color:var(--rud-accent);"></i>Announcements</h4>
+</div>
+
+<div class="data-card">
+    <div class="data-card-header"><span class="data-card-title">Send Announcement to All Users</span></div>
+    <div style="padding:1.5rem;">
+        <EditForm Model="_form" OnValidSubmit="Send">
+            <DataAnnotationsValidator/>
+            <div class="mb-3">
+                <label class="form-label">Title *</label>
+                <InputText @bind-Value="_form.Title" class="form-control" placeholder="Announcement title..."/>
+                <ValidationMessage For="()=>_form.Title" class="text-danger small"/>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Message *</label>
+                <InputTextArea @bind-Value="_form.Message" class="form-control" rows="4" placeholder="Write your announcement..."/>
+                <ValidationMessage For="()=>_form.Message" class="text-danger small"/>
+            </div>
+            <button type="submit" class="btn btn-rud btn-rud-primary" disabled="@_sending">
+                @if(_sending){<span class="spinner-border spinner-border-sm me-1"></span>}
+                <i class="bi bi-send me-1"></i>Broadcast Announcement
+            </button>
+        </EditForm>
+    </div>
+</div>
+
+<div class="mt-4 p-3" style="background:var(--rud-surface);border-radius:var(--rud-radius);border:1px solid var(--rud-border);">
+    <p style="font-size:.85rem;color:var(--rud-text-muted);margin:0;">
+        <i class="bi bi-info-circle me-1"></i>
+        Announcements are sent in real-time via SignalR to all connected users and saved as notifications.
+    </p>
+</div>
+
+@code{
+    AnnouncementDto _form=new();bool _sending;
+    async Task Send(){_sending=true;
+        var ok=await AdminSvc.SendAnnouncementAsync(_form);
+        if(ok){await JS.InvokeVoidAsync("rudInterop.showToast","Announcement broadcast!","success");_form=new();}
+        else await JS.InvokeVoidAsync("rudInterop.showToast","Failed to send.","error");
+        _sending=false;}
+}

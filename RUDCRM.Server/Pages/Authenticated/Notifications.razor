@@ -1,0 +1,60 @@
+@page "/notifications"
+@attribute [Authorize]
+@inject NotificationService NotifSvc
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+@using Microsoft.AspNetCore.SignalR.Client
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+
+<div class="page-header">
+    <h4 class="page-title"><i class="bi bi-bell-fill me-2" style="color:var(--rud-primary);"></i>Notifications</h4>
+    <button class="btn btn-rud btn-rud-outline" @onclick="MarkAllRead"><i class="bi bi-check2-all me-1"></i>Mark All Read</button>
+</div>
+
+@if(_loading){<LoadingSpinner/>}else{
+<div class="data-card">
+@if(_items.Any()){
+@foreach(var n in _items){
+<div class="notification-item @(n.IsRead?"":"unread")" @onclick="()=>MarkRead(n)">
+    <div class="notification-dot" style="background:@(n.Type switch { "Success"=>"var(--rud-success)","Warning"=>"var(--rud-warning)","Announcement"=>"var(--rud-primary)",_=>"var(--rud-info)" });"></div>
+    <div style="flex:1;">
+        <div style="font-weight:600;font-size:.95rem;">@n.Title</div>
+        <div style="font-size:.85rem;color:var(--rud-text-muted);">@n.Message</div>
+        <div style="font-size:.75rem;color:var(--rud-text-muted);margin-top:.25rem;"><i class="bi bi-clock me-1"></i>@n.CreatedAt.ToString("MMM dd, hh:mm tt")</div>
+    </div>
+    <button class="btn btn-rud btn-rud-danger btn-rud-sm" @onclick:stopPropagation @onclick="()=>DeleteNotif(n.Id)"><i class="bi bi-x"></i></button>
+</div>}
+}else{<div class="empty-state"><i class="bi bi-bell-slash"></i><p>No notifications</p></div>}
+</div>}
+
+@code{
+    List<NotificationDto> _items=new();bool _loading=true;
+    HubConnection? _hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _items=await NotifSvc.GetAllAsync();_loading=false;
+        try{
+            var token=await LocalStorage.GetItemAsStringAsync("authToken");
+            if(!string.IsNullOrEmpty(token)){
+                token=token.Trim('"');
+                _hubConnection=new HubConnectionBuilder()
+                    .WithUrl(Navigation.ToAbsoluteUri("/hubs/notifications"),o=>o.AccessTokenProvider=()=>Task.FromResult<string?>(token))
+                    .WithAutomaticReconnect().Build();
+                _hubConnection.On<string,string,string>("ReceiveNotification",async(title,message,type)=>{
+                    await JS.InvokeVoidAsync("rudInterop.showToast",$"{title}: {message}","info");
+                    _items=await NotifSvc.GetAllAsync();await InvokeAsync(StateHasChanged);});
+                _hubConnection.On<string,string>("ReceiveAnnouncement",async(title,message)=>{
+                    await JS.InvokeVoidAsync("rudInterop.showToast",$"📢 {title}: {message}","info");
+                    _items=await NotifSvc.GetAllAsync();await InvokeAsync(StateHasChanged);});
+                await _hubConnection.StartAsync();
+            }
+        }catch{ }
+    }
+
+    async Task MarkRead(NotificationDto n){if(!n.IsRead){await NotifSvc.MarkAsReadAsync(n.Id);n.IsRead=true;}}
+    async Task MarkAllRead(){await NotifSvc.MarkAllAsReadAsync();foreach(var n in _items)n.IsRead=true;}
+    async Task DeleteNotif(int id){await NotifSvc.DeleteAsync(id);_items.RemoveAll(n=>n.Id==id);}
+    public async ValueTask DisposeAsync(){if(_hubConnection!=null)await _hubConnection.DisposeAsync();}
+}

@@ -1,0 +1,49 @@
+@page "/payments"
+@attribute [Authorize]
+@inject PaymentService PaySvc
+@inject InvoiceService InvSvc
+@inject IJSRuntime JS
+
+<div class="page-header">
+    <h4 class="page-title"><i class="bi bi-credit-card-fill me-2" style="color:var(--rud-info);"></i>Payments</h4>
+    <button class="btn btn-rud btn-rud-primary" @onclick="ShowAdd"><i class="bi bi-plus-lg me-1"></i>Record Payment</button>
+</div>
+@if(_loading){<LoadingSpinner/>}else{
+<div class="data-card"><div class="data-card-body" style="overflow-x:auto;">
+<table class="table-rud"><thead><tr><th>Invoice</th><th>Amount</th><th>Method</th><th>Date</th><th>Reference</th><th>Actions</th></tr></thead>
+<tbody>@foreach(var p in _items){
+<tr><td style="font-weight:600;">@(p.InvoiceNumber??"—")</td><td style="font-weight:700;color:var(--rud-success);">$@p.Amount.ToString("N2")</td>
+<td><span class="badge-status badge-contacted">@p.PaymentMethod</span></td>
+<td style="font-size:.85rem;">@p.PaymentDate.ToString("MMM dd, yyyy")</td><td>@(p.ReferenceNumber??"—")</td>
+<td><button class="btn btn-rud btn-rud-outline btn-rud-sm me-1" @onclick="()=>ShowEdit(p)"><i class="bi bi-pencil"></i></button>
+<button class="btn btn-rud btn-rud-danger btn-rud-sm" @onclick="()=>{_del=p;_showDel=true;}"><i class="bi bi-trash"></i></button></td></tr>}
+@if(!_items.Any()){<tr><td colspan="6" class="empty-state"><i class="bi bi-credit-card"></i><p>No payments</p></td></tr>}
+</tbody></table></div></div>}
+
+@if(_showModal){
+<div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.5);"><div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+<div class="modal-header"><h5 class="modal-title">@(_isEdit?"Edit":"Record") Payment</h5><button class="btn-close" @onclick="()=>_showModal=false"></button></div>
+<EditForm Model="_form" OnValidSubmit="Save"><DataAnnotationsValidator /><div class="modal-body"><div class="row g-3">
+<div class="col-md-6"><label class="form-label">Invoice *</label><InputSelect @bind-Value="_form.InvoiceId" class="form-select">
+@foreach(var i in _invoices){<option value="@i.Id">@i.InvoiceNumber ($@i.TotalAmount.ToString("N2"))</option>}</InputSelect></div>
+<div class="col-md-6"><label class="form-label">Amount ($) *</label><InputNumber @bind-Value="_form.Amount" class="form-control"/></div>
+<div class="col-md-6"><label class="form-label">Method</label><InputSelect @bind-Value="_form.PaymentMethod" class="form-select">
+@foreach(var m in new[]{"Cash","Card","BankTransfer","Check"}){<option value="@m">@m</option>}</InputSelect></div>
+<div class="col-md-6"><label class="form-label">Date</label><InputDate @bind-Value="_form.PaymentDate" class="form-control"/></div>
+<div class="col-md-6"><label class="form-label">Reference #</label><InputText @bind-Value="_form.ReferenceNumber" class="form-control"/></div>
+<div class="col-12"><label class="form-label">Notes</label><InputTextArea @bind-Value="_form.Notes" class="form-control" rows="2"/></div>
+</div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" @onclick="()=>_showModal=false">Cancel</button>
+<button type="submit" class="btn btn-rud btn-rud-primary">@(_isEdit?"Update":"Record")</button></div></EditForm></div></div></div>}
+<ConfirmDialog IsVisible="_showDel" Title="Delete Payment" Message="Delete this payment?" OnConfirm="Delete" OnCancel="()=>_showDel=false"/>
+
+@code{
+    List<PaymentDto> _items=new();List<InvoiceDto> _invoices=new();PaymentDto _form=new();PaymentDto? _del;
+    bool _loading=true,_showModal,_isEdit,_showDel;
+    protected override async Task OnInitializedAsync(){_items=await PaySvc.GetAllAsync();_invoices=await InvSvc.GetAllAsync();_loading=false;}
+    void ShowAdd(){_form=new(){PaymentDate=DateTime.Now};if(_invoices.Any())_form.InvoiceId=_invoices[0].Id;_isEdit=false;_showModal=true;}
+    void ShowEdit(PaymentDto p){_form=new(){Id=p.Id,InvoiceId=p.InvoiceId,Amount=p.Amount,PaymentDate=p.PaymentDate,PaymentMethod=p.PaymentMethod,ReferenceNumber=p.ReferenceNumber,Notes=p.Notes};_isEdit=true;_showModal=true;}
+    async Task Save(){bool ok=_isEdit?await PaySvc.UpdateAsync(_form.Id,_form):await PaySvc.CreateAsync(_form);
+        if(ok){await JS.InvokeVoidAsync("rudInterop.showToast",_isEdit?"Updated!":"Recorded!","success");_showModal=false;_items=await PaySvc.GetAllAsync();}
+        else await JS.InvokeVoidAsync("rudInterop.showToast","Failed.","error");}
+    async Task Delete(){if(_del!=null){await PaySvc.DeleteAsync(_del.Id);_showDel=false;_items=await PaySvc.GetAllAsync();await JS.InvokeVoidAsync("rudInterop.showToast","Deleted.","success");}}
+}

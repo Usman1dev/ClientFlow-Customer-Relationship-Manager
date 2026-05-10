@@ -1,0 +1,190 @@
+@page "/customers"
+@attribute [Authorize]
+@inject CustomerService CustService
+@inject IJSRuntime JS
+
+<div class="page-header">
+    <h4 class="page-title"><i class="bi bi-people-fill me-2" style="color:var(--rud-primary);"></i>Customers</h4>
+    <div class="d-flex gap-2">
+        <div class="search-box">
+            <i class="bi bi-search"></i>
+            <input class="form-control" placeholder="Search customers..." @oninput="OnSearch" />
+        </div>
+        <button class="btn btn-rud btn-rud-primary" @onclick="ShowAdd"><i class="bi bi-plus-lg me-1"></i>Add Customer</button>
+    </div>
+</div>
+
+@if (_loading) { <LoadingSpinner /> }
+else
+{
+    <div class="data-card">
+        <div class="data-card-body" style="overflow-x:auto;">
+            <table class="table-rud">
+                <thead>
+                    <tr><th>Name</th><th>Email</th><th>Phone</th><th>Company</th><th>City</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in _filtered)
+                    {
+                        <tr>
+                            <td style="font-weight:600;">@c.FirstName @c.LastName</td>
+                            <td>@c.Email</td>
+                            <td>@(c.Phone ?? "—")</td>
+                            <td>@(c.Company ?? "—")</td>
+                            <td>@(c.City ?? "—")</td>
+                            <td>
+                                <button class="btn btn-rud btn-rud-outline btn-rud-sm me-1" @onclick="() => ShowEdit(c)"><i class="bi bi-pencil"></i></button>
+                                <button class="btn btn-rud btn-rud-danger btn-rud-sm" @onclick="() => ConfirmDelete(c)"><i class="bi bi-trash"></i></button>
+                            </td>
+                        </tr>
+                    }
+                    @if (!_filtered.Any())
+                    {
+                        <tr><td colspan="6" class="empty-state"><i class="bi bi-people"></i><p>No customers found</p></td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- Add/Edit Modal -->
+@if (_showModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.5);">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_isEdit ? "Edit" : "Add") Customer</h5>
+                    <button class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <EditForm Model="_form" OnValidSubmit="SaveCustomer">
+                    <DataAnnotationsValidator />
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">First Name *</label>
+                                <InputText @bind-Value="_form.FirstName" class="form-control" />
+                                <ValidationMessage For="() => _form.FirstName" class="text-danger small" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Last Name *</label>
+                                <InputText @bind-Value="_form.LastName" class="form-control" />
+                                <ValidationMessage For="() => _form.LastName" class="text-danger small" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email *</label>
+                                <InputText @bind-Value="_form.Email" class="form-control" />
+                                <ValidationMessage For="() => _form.Email" class="text-danger small" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Phone</label>
+                                <InputText @bind-Value="_form.Phone" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Company</label>
+                                <InputText @bind-Value="_form.Company" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">City</label>
+                                <InputText @bind-Value="_form.City" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">State</label>
+                                <InputText @bind-Value="_form.State" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Zip Code</label>
+                                <InputText @bind-Value="_form.ZipCode" class="form-control" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Address</label>
+                                <InputText @bind-Value="_form.Address" class="form-control" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Notes</label>
+                                <InputTextArea @bind-Value="_form.Notes" class="form-control" rows="2" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                        <button type="submit" class="btn btn-rud btn-rud-primary" disabled="@_saving">
+                            @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                            @(_isEdit ? "Update" : "Create")
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+<ConfirmDialog IsVisible="_showDelete" Title="Delete Customer"
+    Message="@($"Are you sure you want to delete {_deleteTarget?.FirstName} {_deleteTarget?.LastName}?")"
+    OnConfirm="DeleteCustomer" OnCancel="() => _showDelete = false" />
+
+@code {
+    private List<CustomerDto> _customers = new();
+    private List<CustomerDto> _filtered = new();
+    private CustomerDto _form = new();
+    private CustomerDto? _deleteTarget;
+    private bool _loading = true, _showModal, _isEdit, _saving, _showDelete;
+    private string _search = "";
+
+    protected override async Task OnInitializedAsync() { await LoadData(); }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        _customers = await CustService.GetAllAsync();
+        ApplySearch();
+        _loading = false;
+    }
+
+    private void OnSearch(ChangeEventArgs e) { _search = e.Value?.ToString() ?? ""; ApplySearch(); }
+
+    private void ApplySearch()
+    {
+        _filtered = string.IsNullOrWhiteSpace(_search)
+            ? _customers
+            : _customers.Where(c => $"{c.FirstName} {c.LastName} {c.Email} {c.Company}".Contains(_search, StringComparison.OrdinalIgnoreCase)).ToList();
+    }
+
+    private void ShowAdd() { _form = new(); _isEdit = false; _showModal = true; }
+    private void ShowEdit(CustomerDto c) { _form = new() { Id = c.Id, FirstName = c.FirstName, LastName = c.LastName, Email = c.Email, Phone = c.Phone, Company = c.Company, Address = c.Address, City = c.City, State = c.State, ZipCode = c.ZipCode, Notes = c.Notes }; _isEdit = true; _showModal = true; }
+    private void CloseModal() { _showModal = false; }
+    private void ConfirmDelete(CustomerDto c) { _deleteTarget = c; _showDelete = true; }
+
+    private async Task SaveCustomer()
+    {
+        _saving = true;
+        bool ok = _isEdit ? await CustService.UpdateAsync(_form.Id, _form) : await CustService.CreateAsync(_form);
+        if (ok)
+        {
+            await JS.InvokeVoidAsync("rudInterop.showToast", _isEdit ? "Customer updated!" : "Customer created!", "success");
+            _showModal = false;
+            await LoadData();
+        }
+        else await JS.InvokeVoidAsync("rudInterop.showToast", "Operation failed.", "error");
+        _saving = false;
+    }
+
+    private async Task DeleteCustomer()
+    {
+        if (_deleteTarget != null)
+        {
+            var error = await CustService.DeleteAsync(_deleteTarget.Id);
+            if (error == null) 
+            {
+                await JS.InvokeVoidAsync("rudInterop.showToast", "Customer deleted.", "success");
+            }
+            else 
+            {
+                await JS.InvokeVoidAsync("rudInterop.showToast", error, "error");
+            }
+            _showDelete = false;
+            await LoadData();
+        }
+    }
+}
